@@ -36,39 +36,101 @@ public class Calculator : ICalculator
                 break;
             }
 
-            var parsedNumber = GetDoubleFromNumber(number);
             var parsedAction = GetActionType(action);
 
-            try
+            if (TryParseIntFromNumber(number, out var intNumber))
             {
-                switch (parsedAction)
-                {
-                    case CalculatorActionType.Sum:
-                        Sum(parsedNumber);
-                        break;
-                    case CalculatorActionType.Subtract:
-                        Substract(parsedNumber);
-                        break;
-                    case CalculatorActionType.Multiply:
-                        Multiply(parsedNumber);
-                        break;
-                    case CalculatorActionType.Divide:
-                        Divide(parsedNumber);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
-                }
+                InvokeActionWithIntValue(intNumber, parsedAction);
             }
-            catch (CalculatorException exception)
+            else if (TryParseDoubleFromNumber(number, out var doubleNumber))
             {
-                Console.WriteLine(exception);
+                InvokeActionWithDoubleValue(doubleNumber, parsedAction);
             }
         }
     }
 
-    private double GetDoubleFromNumber(string? number)
+    private void InvokeActionWithDoubleValue(double value, CalculatorActionType action)
     {
-        return double.Parse(number ?? throw new ArgumentNullException(nameof(number)));
+        try
+        {
+            switch (action)
+            {
+                case CalculatorActionType.Sum:
+                    Sum(value);
+                    break;
+                case CalculatorActionType.Subtract:
+                    Substract(value);
+                    break;
+                case CalculatorActionType.Multiply:
+                    Multiply(value);
+                    break;
+                case CalculatorActionType.Divide:
+                    Divide(value);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        catch (CalculatorException exception)
+        {
+            Console.WriteLine(exception);
+        }
+    }
+
+    private void InvokeActionWithIntValue(int value, CalculatorActionType action)
+    {
+        try
+        {
+            switch (action)
+            {
+                case CalculatorActionType.Sum:
+                    Sum(value);
+                    break;
+                case CalculatorActionType.Subtract:
+                    Substract(value);
+                    break;
+                case CalculatorActionType.Multiply:
+                    Multiply(value);
+                    break;
+                case CalculatorActionType.Divide:
+                    Divide(value);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        catch (CalculatorException exception)
+        {
+            Console.WriteLine(exception);
+        }
+    }
+
+    private bool TryParseDoubleFromNumber(string? number, out double value)
+    {
+        if (double.TryParse(number, out value))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+
+        ;
+    }
+
+    private bool TryParseIntFromNumber(string? number, out int value)
+    {
+        if (int.TryParse(number, out value))
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+
+        ;
     }
 
     private CalculatorActionType GetActionType(string action)
@@ -130,6 +192,58 @@ public class Calculator : ICalculator
         }
 
         if (Result / value < double.MinValue)
+        {
+            _history.Push(new CalculatorActionsHistory(CalculatorActionType.Divide, value));
+            throw new CalculatorException.CalculatorStackOverflowException("Stack overflow", _history);
+        }
+
+        _resultStack.Push(Result);
+        Result /= value;
+        RaiseEvent();
+    }
+
+    public void Sum(int value)
+    {
+        if (Result + value > int.MaxValue)
+        {
+            _history.Push(new CalculatorActionsHistory(CalculatorActionType.Divide, value));
+            throw new CalculatorException.CalculatorStackOverflowException("Stack overflow", _history);
+        }
+
+        _resultStack.Push(Result);
+        Result += value;
+        RaiseEvent();
+    }
+
+    public void Substract(int value)
+    {
+        if (Result - value < int.MinValue)
+        {
+            _history.Push(new CalculatorActionsHistory(CalculatorActionType.Subtract, value));
+            throw new CalculatorException.CalculatorStackOverflowException("Stack overflow", _history);
+        }
+
+        _resultStack.Push(Result);
+        Result -= value;
+        RaiseEvent();
+    }
+
+    public void Multiply(int value)
+    {
+        _resultStack.Push(Result);
+        Result *= value;
+        RaiseEvent();
+    }
+
+    public void Divide(int value)
+    {
+        if (value == 0)
+        {
+            _history.Push(new CalculatorActionsHistory(CalculatorActionType.Divide, value));
+            throw new CalculatorException.CalculatorDivideByZeroException("Cannot divide by zero", _history);
+        }
+
+        if (Result / value < int.MinValue)
         {
             _history.Push(new CalculatorActionsHistory(CalculatorActionType.Divide, value));
             throw new CalculatorException.CalculatorStackOverflowException("Stack overflow", _history);
